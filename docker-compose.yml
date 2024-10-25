@@ -1,0 +1,26 @@
+services:
+  
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [ "sh", "-c", "/nms/bin/migrate up && /nms/bin/api" ]
+
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_DB=nms_db
+      - POSTGRES_USER=nms_users
+      - POSTGRES_PASSWORD=nms_pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nms_users -d nms_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
