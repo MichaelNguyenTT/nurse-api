@@ -1,6 +1,11 @@
 package service
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
 
 // response to users
 type ServiceResponse struct {
@@ -19,10 +24,13 @@ type ServiceRequest struct {
 
 // gorm usage
 type Service struct {
-	ID       uuid.UUID `gorm:"primarykey"`
-	Name     string
-	Category string
-	Notes    string
+	ID        uuid.UUID `gorm:"primarykey"`
+	Name      string
+	Category  string
+	Notes     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt
 }
 
 type Services []*Service
@@ -37,7 +45,7 @@ func (s *Service) ToClient() *ServiceResponse {
 }
 
 func (s Services) GetAll() []*ServiceResponse {
-	services := make([]*ServiceResponse, len(s))
+	services := make([]*ServiceResponse, 0, len(s))
 
 	for _, data := range s {
 		services = append(services, data.ToClient())
