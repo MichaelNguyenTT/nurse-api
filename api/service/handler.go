@@ -1,9 +1,9 @@
 package service
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
+	e "nms/api/service/errors"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -25,17 +25,11 @@ func (a *APIHandler) List(w http.ResponseWriter, r *http.Request) {
 	serv, err := a.repo.List()
 	if err != nil {
 		a.logger.Error("database access failure", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		e.ResponseInternalErr(w)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(serv.GetAll())
-	if err != nil {
-		a.logger.Error("JSON response error", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
+	encodeJSON(w, serv.GetAll())
 }
 
 func (a *APIHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +43,7 @@ func (a *APIHandler) Create(w http.ResponseWriter, r *http.Request) {
 	_, err := a.repo.Create(newService)
 	if err != nil {
 		a.logger.Error("failed to connect to database", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		e.ResponseInternalErr(w)
 		return
 	}
 
@@ -60,7 +54,7 @@ func (a *APIHandler) Read(w http.ResponseWriter, r *http.Request) {
 	uuid, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		a.logger.Error("invalid url params", "msg", err)
-		w.WriteHeader(http.StatusBadRequest)
+		e.ResponseBadRequestErr(w)
 		return
 	}
 
@@ -68,12 +62,12 @@ func (a *APIHandler) Read(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			a.logger.Error("no database record", "msg", err)
-			w.WriteHeader(http.StatusNotFound)
+			e.ResponseNotFoundErr(w)
 			return
 		}
 
 		a.logger.Error("failed to connect to database", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		e.ResponseInternalErr(w)
 		return
 	}
 
@@ -85,7 +79,7 @@ func (a *APIHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		a.logger.Error("invalid url params", "msg", err)
-		w.WriteHeader(http.StatusBadRequest)
+		e.ResponseBadRequestErr(w)
 		return
 	}
 
@@ -98,12 +92,12 @@ func (a *APIHandler) Update(w http.ResponseWriter, r *http.Request) {
 	db, err := a.repo.Update(serve)
 	if err != nil {
 		a.logger.Error("failed to connect to database", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		e.ResponseInternalErr(w)
 		return
 	}
 
 	if db == 0 {
-		w.WriteHeader(http.StatusNotFound)
+		e.ResponseNotFoundErr(w)
 		return
 	}
 }
@@ -113,18 +107,19 @@ func (a *APIHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.logger.Error("invalid url params", "msg", err)
 		w.WriteHeader(http.StatusBadRequest)
+		e.ResponseBadRequestErr(w)
 		return
 	}
 
 	db, err := a.repo.Delete(id)
 	if err != nil {
 		a.logger.Error("failed to connect to database", "msg", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		e.ResponseInternalErr(w)
 		return
 	}
 
 	if db == 0 {
-		w.WriteHeader(http.StatusNotFound)
+		e.ResponseNotFoundErr(w)
 		return
 	}
 }

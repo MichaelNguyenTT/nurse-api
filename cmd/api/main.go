@@ -38,20 +38,32 @@ func main() {
 		IdleTimeout:  cfg.Server.TimeoutIdle,
 	}
 
-	shutdownCh := make(chan struct{})
+	closeChan := make(chan os.Signal, 1)
+	signal.Notify(closeChan, os.Interrupt, syscall.SIGTERM)
+	serverErrors := make(chan error, 1)
 
 	go func() {
-		sigintCh := make(chan os.Signal, 1)
-		signal.Notify(sigintCh, os.Interrupt, syscall.SIGTERM)
+		slog.Info("Starting server...", "addr", server.Addr)
+		serverErrors <- server.ListenAndServe()
+	}()
 
+	select {
+	case serverError := <-serverErrors:
+		if serverError != nil && serverError != http.ErrServerClosed {
+			slog.Error("Server error encounter", "error", err)
+		}
+	case <-closeChan:
 		slog.Info("Server shutting down", "addr", server.Addr)
 
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.TimeoutIdle)
 		defer cancel()
 
-		err := server.Shutdown(ctx)
-		if err != nil {
-			slog.Error("Shutting down server failure", "msg", err)
+		if err := server.Shutdown(ctx); err != nil {
+			slog.ErrorContext(ctx, "Shut down server failure", "msg", err)
+
+			if err := server.Close(); err != nil {
+				slog.ErrorContext(ctx, "Couldn't close server", "msg", err)
+			}
 		}
 
 		db, err := db.DB()
@@ -60,17 +72,7 @@ func main() {
 				slog.Error("failed to close db connection")
 			}
 		}
-
-		close(shutdownCh)
-	}()
-
-	slog.Info("Starting server ...", "ADDRESS", server.Addr)
-
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal("Server startup failed")
 	}
-
-	<-shutdownCh
 
 	slog.Info("server shutdown success")
 }

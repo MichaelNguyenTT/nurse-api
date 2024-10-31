@@ -1,6 +1,6 @@
 -- +goose Up
 -- SQL in this section is executed when the migration is applied.
-CREATE TABLE IF NOT EXISTS service
+CREATE TABLE IF NOT EXISTS services
 (
     id             UUID PRIMARY KEY,
     name           TEXT      NOT NULL,
@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS service
 
 -- +goose Down
 -- SQL in this section is executed when the migration is rolled back.
-DROP TABLE IF EXISTS service;
+DROP TABLE IF EXISTS services;
